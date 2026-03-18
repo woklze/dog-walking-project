@@ -130,6 +130,109 @@ public class OrderService {
         contractRepository.save(contract);
     }
 
+    @Transactional
+    public void cancelOrderByOwner(Long orderId, Long ownerId) {
+        // Находим заказ
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Заказ не найден с id: " + orderId));
+
+        // Проверяем, что заказ принадлежит этому владельцу
+        if (!order.getOwner().getId().equals(ownerId)) {
+            throw new AccessDeniedException("Вы не являетесь владельцем этого заказа");
+        }
+
+        // Проверяем, можно ли отменить заказ (только OPEN или IN_PROGRESS)
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessLogicException("Нельзя отменить завершённый или уже отменённый заказ");
+        }
+
+        // Если заказ в статусе IN_PROGRESS, значит есть договор и предоплата
+        if (order.getStatus() == OrderStatus.IN_PROGRESS) {
+            Contract contract = contractRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new BusinessLogicException("Договор не найден для заказа в статусе IN_PROGRESS"));
+
+            // Предоплата остаётся исполнителю (ничего не делаем с contract.prepaid)
+            // В реальном проекте здесь был бы вызов платёжного шлюза для списания предоплаты
+
+            // Меняем статус договора на CANCELLED
+            contract.setStatus(ContractStatus.CANCELLED);
+            contractRepository.save(contract);
+        }
+
+        // Меняем статус заказа на CANCELLED
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+    }
+
+    @Transactional
+    public void cancelOrderByWalker(Long orderId, Long walkerId) {
+        // Находим заказ
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Заказ не найден с id: " + orderId));
+
+        // Заказ должен быть IN_PROGRESS (только тогда есть договор с выгульщиком)
+        if (order.getStatus() != OrderStatus.IN_PROGRESS) {
+            throw new BusinessLogicException("Выгульщик может отменить только заказ, на который уже откликнулся");
+        }
+
+        // Находим договор
+        Contract contract = contractRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new BusinessLogicException("Договор не найден для этого заказа"));
+
+        // Проверяем, что отменяет именно тот выгульщик, который взял заказ
+        if (!contract.getWalker().getId().equals(walkerId)) {
+            throw new AccessDeniedException("Вы не являетесь исполнителем по этому заказу");
+        }
+
+        // Предоплата возвращается владельцу
+        contract.setPrepaid(false); // Помечаем, что предоплата возвращена
+        contract.setStatus(ContractStatus.CANCELLED);
+
+        // В реальном проекте здесь был бы вызов платёжного шлюза для возврата средств
+
+        // Меняем статус заказа обратно на OPEN, чтобы другие выгульщики могли откликнуться
+        order.setStatus(OrderStatus.OPEN);
+
+        contractRepository.save(contract);
+        orderRepository.save(order);
+
+    }
+
+    @Transactional
+    public OrderResponseDto updateOrderByOwner(Long orderId, Long ownerId, OrderUpdateDto updateDto) {
+        // Находим заказ
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Заказ не найден с id: " + orderId));
+
+        // Проверяем, что заказ принадлежит этому владельцу
+        if (!order.getOwner().getId().equals(ownerId)) {
+            throw new AccessDeniedException("Вы не являетесь владельцем этого заказа");
+        }
+
+        // Проверяем, что заказ ещё открыт (статус OPEN)
+        if (order.getStatus() != OrderStatus.OPEN) {
+            throw new BusinessLogicException("Нельзя изменить заказ, который уже в работе или завершён");
+        }
+
+        // Проверяем, что на заказ ещё не откликнулись (нет договора)
+        if (contractRepository.findByOrderId(orderId).isPresent()) {
+            throw new BusinessLogicException("Нельзя изменить заказ, на который уже откликнулся исполнитель");
+        }
+
+        // Обновляем только разрешённые поля
+        order.setDogBreed(updateDto.getDogBreed());
+        order.setDogNeeds(updateDto.getDogNeeds());
+        order.setWalkDateTime(updateDto.getWalkDateTime());
+        order.setDurationMinutes(updateDto.getDurationMinutes());
+        order.setMeetingPoint(updateDto.getMeetingPoint());
+        order.setPaymentAmount(updateDto.getPaymentAmount());
+
+        // Сохраняем изменения
+        order = orderRepository.save(order);
+
+        return mapToDto(order);
+    }
     // маппинг в дто
     private OrderResponseDto mapToDto(Order order) {
         OrderResponseDto dto = new OrderResponseDto();
