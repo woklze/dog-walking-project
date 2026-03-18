@@ -6,19 +6,19 @@ import jakarta.validation.constraints.*;
 @Data
 public class RatingCreateDto {
 
-    @NotNull(message = "From user ID is required")
+    @NotNull(message = "ID оценивающего пользователя не может быть пустым")
     private Long fromUserId;
 
-    @NotNull(message = "To user ID is required")
+    @NotNull(message = "ID оцениваемого пользователя не может быть пустым")
     private Long toUserId;
 
-    @NotNull(message = "Contract ID is required")
+    @NotNull(message = "ID контракта не может быть пустым")
     private Long contractId;
 
-    @NotNull(message = "Stars are required")
+    @NotNull(message = "Количество звезд не может быть пустым")
     @Min(1) @Max(5)
     private Integer stars;
 
-    @Size(max = 500, message = "Comment too long")
+    @Size(max = 500, message = "Комментарий слишком длинный")
     private String comment;
 }
