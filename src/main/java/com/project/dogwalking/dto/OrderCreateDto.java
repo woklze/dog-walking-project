@@ -8,26 +8,26 @@ import java.time.LocalDateTime;
 @Data
 public class OrderCreateDto {
 
-    @NotNull(message = "Owner ID is required")
+    @NotNull(message = "ID владельца не может быть пустым")
     private Long ownerId;
 
-    @NotBlank(message = "Dog breed is required")
+    @NotBlank(message = "Порода собаки не может быть пустой")
     private String dogBreed;
 
-    private String dogNeeds; // особые потребности
+    private String dogNeeds;
 
-    @NotNull(message = "Walk date and time is required")
-    @Future(message = "Walk date must be in the future")
+    @NotNull(message = "Время прогулки не может быть пустым")
+    @Future(message = "Время прогулки должно быть в будущем")
     private LocalDateTime walkDateTime;
 
-    @NotNull(message = "Duration is required")
-    @Min(value = 15, message = "Duration must be at least 15 minutes")
+    @NotNull(message = "Продолжительность прогулки не может быть пустой")
+    @Min(value = 15, message = "Продолжительность прогулки должна быть как минимум 15 минут")
     private Integer durationMinutes;
 
-    @NotBlank(message = "Meeting point is required")
+    @NotBlank(message = "Место встречи не может быть пустым")
     private String meetingPoint;
 
-    @NotNull(message = "Payment amount is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Payment must be positive")
+    @NotNull(message = "Сумма оплаты не может быть пустой")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Сумма оплаты должна быть положительной")
     private BigDecimal paymentAmount;
 }
