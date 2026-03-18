@@ -63,4 +63,29 @@ public class OrderController {
         orderService.completeOrder(id, walkerId);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/cancel-by-owner")
+    public ResponseEntity<Void> cancelOrderByOwner(
+            @PathVariable Long id,
+            @RequestParam Long ownerId) {
+        orderService.cancelOrderByOwner(id, ownerId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/cancel-by-walker")
+    public ResponseEntity<Void> cancelOrderByWalker(
+            @PathVariable Long id,
+            @RequestParam Long walkerId) {
+        orderService.cancelOrderByWalker(id, walkerId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<OrderResponseDto> updateOrderByOwner(
+            @PathVariable Long id,
+            @RequestParam Long ownerId,
+            @Valid @RequestBody OrderUpdateDto updateDto) {
+        OrderResponseDto updatedOrder = orderService.updateOrderByOwner(id, ownerId, updateDto);
+        return ResponseEntity.ok(updatedOrder);
+    }
 }
