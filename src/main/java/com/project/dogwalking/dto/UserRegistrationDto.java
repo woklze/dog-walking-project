@@ -8,18 +8,18 @@ import jakarta.validation.constraints.Size;
 @Data
 public class UserRegistrationDto {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Почта не может быть пустой")
+    @Email(message = "Неверный формат почты")
     private String email;
 
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+    @NotBlank(message = "Ник не может быть пустым")
+    @Size(min = 3, max = 50, message = "Ник должен быть не менее 3 символов и не более 50")
     private String username;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @NotBlank(message = "Пароль обязателен")
+    @Size(min = 6, message = "Пароль должен быть более 5 символов")
     private String password;
 
-    @NotBlank(message = "Role is required")
+    @NotBlank(message = "Роль не может быть пустой")
     private String role; // "OWNER" или "WALKER"
 }
