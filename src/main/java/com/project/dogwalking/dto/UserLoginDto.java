@@ -6,10 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 
 @Data
 public class UserLoginDto {
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank(message = "Почта не может быть пустой")
+    @Email(message = "Неверный формат почты")
     private String email;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Пароль не может быть пустым")
     private String password;
 }
