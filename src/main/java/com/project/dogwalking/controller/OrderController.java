@@ -3,6 +3,7 @@ package com.project.dogwalking.controller;
 import com.project.dogwalking.dto.ContractResponseDto;
 import com.project.dogwalking.dto.OrderCreateDto;
 import com.project.dogwalking.dto.OrderResponseDto;
+import com.project.dogwalking.dto.OrderUpdateDto;
 import com.project.dogwalking.entity.Contract;
 import com.project.dogwalking.service.OrderService;
 import com.project.dogwalking.service.ContractService;
@@ -34,9 +35,10 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<List<OrderResponseDto>> getOrders(
             @RequestParam(required = false) String district,
+            @RequestParam(required = false) BigDecimal minPayment,
             @RequestParam(required = false) BigDecimal maxPayment,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime walkTime) {
-        List<OrderResponseDto> orders = orderService.getOrders(district, maxPayment, walkTime);
+        List<OrderResponseDto> orders = orderService.getOrders(district, minPayment, maxPayment, walkTime);
         return ResponseEntity.ok(orders);
     }
 
