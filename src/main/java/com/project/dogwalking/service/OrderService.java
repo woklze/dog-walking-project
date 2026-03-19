@@ -2,6 +2,7 @@ package com.project.dogwalking.service;
 
 import com.project.dogwalking.dto.OrderCreateDto;
 import com.project.dogwalking.dto.OrderResponseDto;
+import com.project.dogwalking.dto.OrderUpdateDto;
 import com.project.dogwalking.entity.Contract;
 import com.project.dogwalking.entity.Order;
 import com.project.dogwalking.entity.User;
@@ -13,6 +14,7 @@ import com.project.dogwalking.exception.ResourceNotFoundException;
 import com.project.dogwalking.repository.ContractRepository;
 import com.project.dogwalking.repository.OrderRepository;
 import com.project.dogwalking.specification.OrderSpecifications;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -54,9 +56,13 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponseDto> getOrders(String district, BigDecimal maxPayment, LocalDateTime walkTime) {
+    public List<OrderResponseDto> getOrders(String district,
+                                            BigDecimal minPayment,
+                                            BigDecimal maxPayment,
+                                            LocalDateTime walkTime) {
         Specification<Order> spec = Specification.where(OrderSpecifications.hasStatusOpen())
                 .and(OrderSpecifications.districtContains(district))
+                .and(OrderSpecifications.minPaymentGreaterThanOrEqual(minPayment))
                 .and(OrderSpecifications.maxPaymentLessThanOrEqual(maxPayment))
                 .and(OrderSpecifications.walkTimeGreaterThanOrEqual(walkTime));
 
@@ -200,7 +206,7 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponseDto updateOrderByOwner(Long orderId, Long ownerId, OrderUpdateDto updateDto) {
+    public OrderResponseDto updateOrderByOwner(Long orderId, Long ownerId, @Valid OrderUpdateDto updateDto) {
         // Находим заказ
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Заказ не найден с id: " + orderId));
