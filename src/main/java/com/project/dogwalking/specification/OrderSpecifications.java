@@ -31,6 +31,15 @@ public class OrderSpecifications {
         };
     }
 
+    public static Specification<Order> minPaymentGreaterThanOrEqual(BigDecimal minPayment) {
+        return (root, query, cb) -> {
+            if (minPayment == null) {
+                return cb.conjunction(); // не добавляем условие
+            }
+            return cb.greaterThanOrEqualTo(root.get("paymentAmount"), minPayment);
+        };
+    }
+
     public static Specification<Order> walkTimeGreaterThanOrEqual(LocalDateTime walkTime) {
         return (root, query, cb) -> {
             if (walkTime == null) {
