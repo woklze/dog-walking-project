@@ -28,30 +28,30 @@ public class RatingService {
     public RatingResponseDto createRating(RatingCreateDto dto) {
         // договор существует и завершён
         Contract contract = contractRepository.findById(dto.getContractId())
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + dto.getContractId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + dto.getContractId()));
 
         if (contract.getStatus() != ContractStatus.COMPLETED) {
-            throw new BusinessLogicException("Cannot rate an incomplete contract");
+            throw new BusinessLogicException("Нельзя оценить незавершенный контракт");
         }
 
         boolean isFromUserValid = contract.getOrder().getOwner().getId().equals(dto.getFromUserId()) ||
                 contract.getWalker().getId().equals(dto.getFromUserId());
         if (!isFromUserValid) {
-            throw new BusinessLogicException("You are not a participant of this contract");
+            throw new BusinessLogicException("Вы не являетесь участником данного контракта");
         }
 
         boolean isToUserValid = contract.getOrder().getOwner().getId().equals(dto.getToUserId()) ||
                 contract.getWalker().getId().equals(dto.getToUserId());
         if (!isToUserValid) {
-            throw new BusinessLogicException("The rated user is not a participant of this contract");
+            throw new BusinessLogicException("Оцениваемый пользователь не является участником данного контракта");
         }
 
         if (dto.getFromUserId().equals(dto.getToUserId())) {
-            throw new BusinessLogicException("You cannot rate yourself");
+            throw new BusinessLogicException("Вы не можете оценить себя");
         }
 
         if (ratingRepository.existsByFromUserIdAndContractId(dto.getFromUserId(), dto.getContractId())) {
-            throw new BusinessLogicException("You have already rated this contract");
+            throw new BusinessLogicException("Вы уже оценили этот контракт");
         }
 
 
