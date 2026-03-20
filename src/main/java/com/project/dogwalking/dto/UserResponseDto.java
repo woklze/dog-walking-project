@@ -8,7 +8,7 @@ public class UserResponseDto {
     private Long id;
     private String email;
     private String username;
-    private String role;        // OWNER или WALKER
+    private String role;
     private Double rating;
     private LocalDateTime createdAt;
 }
