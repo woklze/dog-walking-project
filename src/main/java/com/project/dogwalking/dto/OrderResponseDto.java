@@ -8,13 +8,13 @@ import java.time.LocalDateTime;
 public class OrderResponseDto {
     private Long id;
     private Long ownerId;
-    private String ownerName;      // имя владельца для удобства
+    private String ownerName;
     private String dogBreed;
     private String dogNeeds;
     private LocalDateTime walkDateTime;
     private Integer durationMinutes;
     private String meetingPoint;
     private BigDecimal paymentAmount;
-    private String status;          // OPEN, IN_PROGRESS и т.д.
+    private String status;
     private LocalDateTime createdAt;
 }
