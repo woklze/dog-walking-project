@@ -114,7 +114,7 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + orderId));
 
         if (order.getStatus() != OrderStatus.IN_PROGRESS) {
-            throw new BusinessLogicException(Заказ не может быть завершен, потому что он не 'в процессе'");
+            throw new BusinessLogicException("Заказ не может быть завершен, потому что он не 'в процессе'");
         }
 
         Contract contract = contractRepository.findByOrderId(orderId)
