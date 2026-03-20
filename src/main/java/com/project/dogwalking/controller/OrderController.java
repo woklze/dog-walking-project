@@ -24,7 +24,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
-    private final ContractService contractService; // для преобразования Contract в DTO
+    private final ContractService contractService; // для преобразования contract в dto
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderCreateDto createDto) {
@@ -53,8 +53,7 @@ public class OrderController {
             @PathVariable Long id,
             @RequestParam Long walkerId) {
         Contract contract = orderService.respondToOrder(id, walkerId);
-        // Преобразуем сущность Contract в ContractResponseDto через сервис или маппер
-        ContractResponseDto contractDto = contractService.getContractById(contract.getId()); // либо отдельный метод
+        ContractResponseDto contractDto = contractService.getContractById(contract.getId()); 
         return ResponseEntity.ok(contractDto);
     }
 
