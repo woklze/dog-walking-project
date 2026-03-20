@@ -20,7 +20,7 @@ public class ContractService {
     @Transactional(readOnly = true)
     public ContractResponseDto getContractById(Long id) {
         Contract contract = contractRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + id));
         return mapToDto(contract);
     }
 
@@ -34,7 +34,7 @@ public class ContractService {
     @Transactional(readOnly = true)
     public ContractResponseDto getContractByOrderId(Long orderId) {
         Contract contract = contractRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found for order id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт для заказа с ID: " + orderId));
         return mapToDto(contract);
     }
 
