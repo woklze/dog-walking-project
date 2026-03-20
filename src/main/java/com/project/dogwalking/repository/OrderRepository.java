@@ -12,5 +12,4 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findByOwnerId(Long ownerId);
     List<Order> findByStatus(OrderStatus status);
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
-    // Удали старый метод findOrdersByFilters
 }
