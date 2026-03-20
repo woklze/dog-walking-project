@@ -8,8 +8,8 @@ public class ContractResponseDto {
     private Long id;
     private Long orderId;
     private Long walkerId;
-    private String walkerName;      // имя исполнителя
-    private String status;           // ACTIVE, COMPLETED, CANCELLED
+    private String walkerName;
+    private String status;
     private Boolean prepaid;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
