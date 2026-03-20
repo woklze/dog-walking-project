@@ -23,7 +23,7 @@ public class UserService {
     public UserResponseDto register(UserRegistrationDto dto) {
         // проверяем, не занят ли email
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new BusinessLogicException("Email already in use");
+            throw new BusinessLogicException("Почта уже используется");
         }
 
         // создаём нового пользователя
@@ -36,7 +36,7 @@ public class UserService {
         try {
             user.setRole(Role.valueOf(dto.getRole().toUpperCase()));
         } catch (IllegalArgumentException e) {
-            throw new BusinessLogicException("Invalid role. Use OWNER or WALKER");
+            throw new BusinessLogicException("Несуществующая роль. ИСпользуйте OWNER или WALKER");
         }
 
         user = userRepository.save(user);
@@ -46,14 +46,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponseDto getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден пользователь с ID: " + id));
         return mapToDto(user);
     }
 
     @Transactional(readOnly = true)
     public User findUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден пользователь с ID: " + id));
     }
 
     // маппинг из сущности в dto
