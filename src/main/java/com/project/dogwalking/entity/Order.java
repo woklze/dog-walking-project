@@ -28,7 +28,7 @@ public class Order {
     private String dogBreed;
 
     @Column(name = "dog_needs", columnDefinition = "TEXT")
-    private String dogNeeds;  // особые потребности собаки
+    private String dogNeeds; 
 
     @Column(name = "walk_date_time", nullable = false)
     private LocalDateTime walkDateTime;
