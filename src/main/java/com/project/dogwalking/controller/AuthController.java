@@ -26,12 +26,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<UserResponseDto> login(@Valid @RequestBody UserLoginDto loginDto) {
-        // Пока просто заглушка: ищем пользователя по email, проверяем пароль
-        // Для демо можно возвращать пользователя, но в реальности здесь должен быть JWT токен
-        // Так как авторизация не обязательна для минимальной версии, можно оставить заглушку,
-        // либо вообще убрать этот метод.
-        // Для простоты вернём пользователя без проверки пароля (небезопасно!).
-        // Лучше пока закомментировать или удалить.
-        throw new UnsupportedOperationException("Login not implemented yet");
+        // заглушка
+        throw new UnsupportedOperationException("Вход в аккунт еще не реализован");
     }
 }
