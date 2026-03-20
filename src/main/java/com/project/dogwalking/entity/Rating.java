@@ -20,18 +20,18 @@ public class Rating {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_user_id", nullable = false)
-    private User fromUser; // кто оценивает
+    private User fromUser; 
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "to_user_id", nullable = false)
-    private User toUser;     // кого оценивают
+    private User toUser;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     private Contract contract;
 
     @Column(nullable = false)
-    private Integer stars;   // 1-5
+    private Integer stars;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
