@@ -9,7 +9,4 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
-
-    // Можно добавить поиск по роли, если понадобится
-    // List<User> findByRole(Role role);
 }
