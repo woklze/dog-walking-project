@@ -38,7 +38,7 @@ public class OrderService {
         // проверяем, что владелец существует и имеет роль OWNER
         User owner = userService.findUserEntityById(dto.getOwnerId());
         if (!owner.getRole().name().equals("OWNER")) {
-            throw new BusinessLogicException("Only users with role OWNER can create orders");
+            throw new BusinessLogicException("Только пользователи с ролью ВЛАДЕЛЕЦ могут создавать заказы");
         }
 
         Order order = new Order();
@@ -49,7 +49,6 @@ public class OrderService {
         order.setDurationMinutes(dto.getDurationMinutes());
         order.setMeetingPoint(dto.getMeetingPoint());
         order.setPaymentAmount(dto.getPaymentAmount());
-        // статус по умолчанию OPEN
 
         order = orderRepository.save(order);
         return mapToDto(order);
@@ -73,26 +72,26 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderResponseDto getOrderById(Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + id));
         return mapToDto(order);
     }
 
     @Transactional
     public Contract respondToOrder(Long orderId, Long walkerId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + orderId));
 
         if (order.getStatus() != OrderStatus.OPEN) {
-            throw new BusinessLogicException("Order is not open for response");
+            throw new BusinessLogicException("Заказ закрыт для принятия");
         }
 
         User walker = userService.findUserEntityById(walkerId);
         if (!walker.getRole().name().equals("WALKER")) {
-            throw new BusinessLogicException("Only users with role WALKER can respond to orders");
+            throw new BusinessLogicException("Только пользователи с ролью ВЫГУЛЬЩИК могут принимать заказы");
         }
 
         if (contractRepository.findByOrderId(orderId).isPresent()) {
-            throw new BusinessLogicException("Contract already exists for this order");
+            throw new BusinessLogicException("Контракт для этого заказа уже существует");
         }
 
         // договор
@@ -106,31 +105,28 @@ public class OrderService {
         order.setStatus(OrderStatus.IN_PROGRESS);
         orderRepository.save(order);
 
-        return contract;  // вернём сущность, потом можно будет преобразовать в DTO в контроллере
+        return contract;
     }
 
     @Transactional
     public void completeOrder(Long orderId, Long walkerId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Не найден контракт с ID: " + orderId));
 
         if (order.getStatus() != OrderStatus.IN_PROGRESS) {
-            throw new BusinessLogicException("Order cannot be completed because it's not in progress");
+            throw new BusinessLogicException(Заказ не может быть завершен, потому что он не 'в процессе'");
         }
 
         Contract contract = contractRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new BusinessLogicException("No contract found for this order"));
+                .orElseThrow(() -> new BusinessLogicException("Для этого заказа контракт не найден"));
 
         if (!contract.getWalker().getId().equals(walkerId)) {
-            throw new AccessDeniedException("Only the assigned walker can complete the order");
+            throw new AccessDeniedException("Только закрепленный выгульщик может выполнить этот заказ");
         }
 
         order.setStatus(OrderStatus.COMPLETED);
         contract.setStatus(ContractStatus.COMPLETED);
         contract.setCompletedAt(LocalDateTime.now());
-
-        // Здесь можно добавить логику списания полной оплаты с карты (имитация)
-        // Например, отправить запрос в платёжный шлюз
 
         orderRepository.save(order);
         contractRepository.save(contract);
@@ -158,13 +154,12 @@ public class OrderService {
                     .orElseThrow(() -> new BusinessLogicException("Договор не найден для заказа в статусе IN_PROGRESS"));
 
             // Предоплата остаётся исполнителю (ничего не делаем с contract.prepaid)
-            // В реальном проекте здесь был бы вызов платёжного шлюза для списания предоплаты
-
+            
             // Меняем статус договора на CANCELLED
             contract.setStatus(ContractStatus.CANCELLED);
             contractRepository.save(contract);
         }
-
+        
         // Меняем статус заказа на CANCELLED
         order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
