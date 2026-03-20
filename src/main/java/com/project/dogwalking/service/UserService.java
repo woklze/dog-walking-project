@@ -56,14 +56,6 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
 
-    // метод для обновления рейтинга
-    @Transactional
-    public void updateUserRating(Long userId) {
-        // Здесь будет логика пересчёта среднего рейтинга
-        // Но пока оставим заглушку, так как будем вызывать из RatingService
-        // Реализуем позже, когда будет готов RatingService
-    }
-
     // маппинг из сущности в dto
     private UserResponseDto mapToDto(User user) {
         UserResponseDto dto = new UserResponseDto();
