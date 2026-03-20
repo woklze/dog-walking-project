@@ -1,6 +1,6 @@
 package com.project.dogwalking.entity;
 
-import com.project.dogwalking.entity.enums.Role; // импортируем enum из отдельного пакета
+import com.project.dogwalking.entity.enums.Role;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
