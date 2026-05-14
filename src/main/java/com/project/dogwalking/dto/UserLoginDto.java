@@ -13,3 +13,4 @@ public class UserLoginDto {
     @NotBlank(message = "Пароль не может быть пустым")
     private String password;
 }
+
