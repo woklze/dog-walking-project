@@ -1,5 +1,6 @@
 package com.project.dogwalking.service;
 
+import com.project.dogwalking.PasswordHashUtil;
 import com.project.dogwalking.dto.UserRegistrationDto;
 import com.project.dogwalking.dto.UserResponseDto;
 import com.project.dogwalking.entity.User;
@@ -8,39 +9,50 @@ import com.project.dogwalking.exception.BusinessLogicException;
 import com.project.dogwalking.exception.ResourceNotFoundException;
 import com.project.dogwalking.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Transactional
-    public UserResponseDto register(UserRegistrationDto dto) {
-        // проверяем, не занят ли email
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new BusinessLogicException("Почта уже используется");
-        }
+    public void register(UserRegistrationDto dto) {
+        // Хэшируем пароль перед сохранением
+        String hashedPassword = PasswordHashUtil.hashPassword(dto.getPassword());
 
-        // создаём нового пользователя
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setUsername(dto.getUsername());
-        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
+        user.setPasswordHash(hashedPassword); // Храним ТОЛЬКО хэш
 
-        // преобразуем строку роли в enum
         try {
             user.setRole(Role.valueOf(dto.getRole().toUpperCase()));
         } catch (IllegalArgumentException e) {
             throw new BusinessLogicException("Несуществующая роль. ИСпользуйте OWNER или WALKER");
         }
 
-        user = userRepository.save(user);
-        return mapToDto(user);
+        userRepository.save(user);
+    }
+
+    public boolean authenticate(String email, String rawPassword) {
+        // Ищем пользователя по логину
+        Optional<User> user = userRepository.findByEmail(email);
+
+        if (user == null) {
+            return false; // Пользователь не найден
+        }
+
+        User us = user.get();
+        // Сравниваем введенный пароль с хэшем из БД
+        return PasswordHashUtil.verifyPassword(rawPassword, us.getPasswordHash());
     }
 
     @Transactional(readOnly = true)
