@@ -23,3 +23,4 @@ public class UserRegistrationDto {
     @NotBlank(message = "Роль не может быть пустой")
     private String role; // "OWNER" или "WALKER"
 }
+
