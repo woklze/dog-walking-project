@@ -1,0 +1,126 @@
+package com.project.dogwalking.integration;
+
+import com.project.dogwalking.dto.OrderCreateDto;
+import com.project.dogwalking.dto.OrderResponseDto;
+import com.project.dogwalking.entity.Contract;
+import com.project.dogwalking.entity.Order;
+import com.project.dogwalking.entity.User;
+import com.project.dogwalking.entity.enums.ContractStatus;
+import com.project.dogwalking.entity.enums.OrderStatus;
+import com.project.dogwalking.entity.enums.Role;
+import com.project.dogwalking.repository.ContractRepository;
+import com.project.dogwalking.repository.OrderRepository;
+import com.project.dogwalking.repository.UserRepository;
+import com.project.dogwalking.service.OrderService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@Transactional
+public class OrderServiceIntegrationTest2 {
+
+    @Autowired
+    private OrderService orderService;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private OrderRepository orderRepository;
+    @Autowired
+    private ContractRepository contractRepository;
+
+    private Long ownerId;
+    private Long walkerId;
+
+    // Настройка H2
+    @TestConfiguration
+    static class TestDatabaseConfig {
+        @Bean
+        @Primary
+        public DataSource dataSource() {
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName("org.h2.Driver");
+            dataSource.setUrl("jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+            dataSource.setUsername("sa");
+            dataSource.setPassword("");
+            return dataSource;
+        }
+    }
+    // ---------------------------------------------------------
+
+    @BeforeEach
+    void setUp() {
+        // Очистка БД перед каждым тестом для чистоты эксперимента
+        contractRepository.deleteAll();
+        orderRepository.deleteAll();
+        userRepository.deleteAll();
+
+        User owner = new User();
+        owner.setEmail("owner@test.com");
+        owner.setUsername("owner");
+        owner.setPasswordHash("hashed_pass");
+        owner.setRole(Role.OWNER);
+        owner = userRepository.save(owner);
+        ownerId = owner.getId();
+
+        User walker = new User();
+        walker.setEmail("walker@test.com");
+        walker.setUsername("walker");
+        walker.setPasswordHash("hashed_pass");
+        walker.setRole(Role.WALKER);
+        walker = userRepository.save(walker);
+        walkerId = walker.getId();
+    }
+
+    @Test
+    void fullOrderLifecycle_ShouldCreateOrderRespondAndComplete() {
+        // 1. Создание заказа
+        OrderCreateDto createDto = new OrderCreateDto();
+        createDto.setOwnerId(ownerId);
+        createDto.setDogBreed("Beagle");
+        createDto.setDogNeeds("Friendly with kids");
+        createDto.setWalkDateTime(LocalDateTime.now().plusDays(2));
+        createDto.setDurationMinutes(45);
+        createDto.setMeetingPoint("Central Park");
+        createDto.setPaymentAmount(BigDecimal.valueOf(1200));
+
+        OrderResponseDto createdOrder = orderService.createOrder(createDto);
+        Long orderId = createdOrder.getId();
+
+        assertThat(createdOrder.getStatus()).isEqualTo(OrderStatus.OPEN.name());
+        assertThat(createdOrder.getOwnerId()).isEqualTo(ownerId);
+
+        // 2. Отклик выгульщика
+        Contract contract = orderService.respondToOrder(orderId, walkerId);
+        assertThat(contract).isNotNull();
+        assertThat(contract.getOrder().getId()).isEqualTo(orderId);
+        assertThat(contract.getWalker().getId()).isEqualTo(walkerId);
+        assertThat(contract.getPrepaid()).isTrue();
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.ACTIVE);
+
+        Order orderAfterRespond = orderRepository.findById(orderId).orElseThrow();
+        assertThat(orderAfterRespond.getStatus()).isEqualTo(OrderStatus.IN_PROGRESS);
+
+        // 3. Завершение выгула
+        orderService.completeOrder(orderId, walkerId);
+
+        Order completedOrder = orderRepository.findById(orderId).orElseThrow();
+        assertThat(completedOrder.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+
+        Contract completedContract = contractRepository.findByOrderId(orderId).orElseThrow();
+        assertThat(completedContract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+        assertThat(completedContract.getCompletedAt()).isNotNull();
+    }
+}
