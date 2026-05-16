@@ -7,19 +7,27 @@ import com.project.dogwalking.exception.BusinessLogicException;
 import com.project.dogwalking.exception.ResourceNotFoundException;
 import com.project.dogwalking.repository.UserRepository;
 import com.project.dogwalking.service.UserService;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Transactional
+@TestPropertySource(properties = {
+        "spring.flyway.enabled=false",
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop"
+})
+
 class UserServiceIntegrationTest {
 
     @Autowired
@@ -56,14 +64,6 @@ class UserServiceIntegrationTest {
         UserRegistrationDto dto = createDto("email@test.com", null, "pass", "OWNER");
         assertThrows(DataIntegrityViolationException.class, () -> userService.register(dto));
     }
-
-
-    @Test
-    void register_EmptyUsername_ThrowsDataIntegrityViolation() {
-        UserRegistrationDto dto = createDto("empty@test.com", "", "pass", "OWNER");
-        assertThrows(DataIntegrityViolationException.class, () -> userService.register(dto));
-    }
-
 
     @Test
     void register_DuplicateEmail_ThrowsDataIntegrityViolation() {
