@@ -8,6 +8,7 @@ import com.project.dogwalking.entity.enums.Role;
 import com.project.dogwalking.exception.BusinessLogicException;
 import com.project.dogwalking.exception.ResourceNotFoundException;
 import com.project.dogwalking.repository.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,9 +23,11 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public void register(UserRegistrationDto dto) {
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    public void register(@Valid UserRegistrationDto dto) {
         // Хэшируем пароль перед сохранением
         String hashedPassword = PasswordHashUtil.hashPassword(dto.getPassword());
 
@@ -36,7 +39,7 @@ public class UserService {
         try {
             user.setRole(Role.valueOf(dto.getRole().toUpperCase()));
         } catch (IllegalArgumentException e) {
-            throw new BusinessLogicException("Несуществующая роль. ИСпользуйте OWNER или WALKER");
+            throw new BusinessLogicException("Несуществующая роль. Используйте OWNER или WALKER");
         }
 
         userRepository.save(user);
@@ -46,7 +49,7 @@ public class UserService {
         // Ищем пользователя по логину
         Optional<User> user = userRepository.findByEmail(email);
 
-        if (user == null) {
+        if (user.isEmpty()) {
             return false; // Пользователь не найден
         }
 
