@@ -40,6 +40,10 @@ public class RatingService {
             throw new BusinessLogicException("Вы не являетесь участником данного контракта");
         }
 
+        if (dto.getStars() == null || dto.getStars() < 1 || dto.getStars() > 5) {
+            throw new BusinessLogicException("Количество звезд должно быть от 1 до 5");
+        }
+
         boolean isToUserValid = contract.getOrder().getOwner().getId().equals(dto.getToUserId()) ||
                 contract.getWalker().getId().equals(dto.getToUserId());
         if (!isToUserValid) {
