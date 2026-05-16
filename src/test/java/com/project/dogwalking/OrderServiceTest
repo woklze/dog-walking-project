@@ -1,0 +1,336 @@
+package com.project.dogwalking.service;
+
+import com.project.dogwalking.dto.OrderCreateDto;
+import com.project.dogwalking.dto.OrderResponseDto;
+import com.project.dogwalking.dto.OrderUpdateDto;
+import com.project.dogwalking.entity.*;
+import com.project.dogwalking.entity.enums.ContractStatus;
+import com.project.dogwalking.entity.enums.OrderStatus;
+import com.project.dogwalking.entity.enums.Role;
+import com.project.dogwalking.exception.AccessDeniedException;
+import com.project.dogwalking.exception.BusinessLogicException;
+import com.project.dogwalking.repository.ContractRepository;
+import com.project.dogwalking.repository.OrderRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock
+    private OrderRepository orderRepository;
+    @Mock
+    private ContractRepository contractRepository;
+    @Mock
+    private UserService userService;
+    @InjectMocks
+    private OrderService orderService;
+
+    // ==================== 1. createOrder ====================
+    @Test
+    void createOrder_ShouldSaveAndReturnDto_WhenOwnerExistsAndHasOwnerRole() {
+        // given
+        Long ownerId = 1L;
+        User owner = new User();
+        owner.setId(ownerId);
+        owner.setRole(Role.OWNER);
+        owner.setUsername("Alice");
+
+        OrderCreateDto createDto = new OrderCreateDto();
+        createDto.setOwnerId(ownerId);
+        createDto.setDogBreed("Labrador");
+        createDto.setDogNeeds("No stairs");
+        createDto.setWalkDateTime(LocalDateTime.now().plusDays(1));
+        createDto.setDurationMinutes(60);
+        createDto.setMeetingPoint("Central Park");
+        createDto.setPaymentAmount(BigDecimal.valueOf(1500));
+
+        when(userService.findUserEntityById(ownerId)).thenReturn(owner);
+
+        Order savedOrder = new Order();
+        savedOrder.setId(100L);
+        savedOrder.setOwner(owner);
+        savedOrder.setDogBreed(createDto.getDogBreed());
+        savedOrder.setDogNeeds(createDto.getDogNeeds());
+        savedOrder.setWalkDateTime(createDto.getWalkDateTime());
+        savedOrder.setDurationMinutes(createDto.getDurationMinutes());
+        savedOrder.setMeetingPoint(createDto.getMeetingPoint());
+        savedOrder.setPaymentAmount(createDto.getPaymentAmount());
+        savedOrder.setStatus(OrderStatus.OPEN);
+
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+
+        // when
+        OrderResponseDto result = orderService.createOrder(createDto);
+
+        // then
+        assertThat(result.getId()).isEqualTo(100L);
+        assertThat(result.getOwnerId()).isEqualTo(ownerId);
+        assertThat(result.getDogBreed()).isEqualTo("Labrador");
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.OPEN.name());
+
+        verify(orderRepository, times(1)).save(any(Order.class));
+    }
+
+    @Test
+    void createOrder_ShouldThrowException_WhenUserIsNotOwner() {
+        // given
+        Long userId = 2L;
+        User walker = new User();
+        walker.setId(userId);
+        walker.setRole(Role.WALKER);
+
+        OrderCreateDto createDto = new OrderCreateDto();
+        createDto.setOwnerId(userId);
+
+        when(userService.findUserEntityById(userId)).thenReturn(walker);
+
+        // when/then
+        assertThatThrownBy(() -> orderService.createOrder(createDto))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("Только пользователи с ролью ВЛАДЕЛЕЦ");
+        verify(orderRepository, never()).save(any());
+    }
+
+    // ==================== 2. respondToOrder ====================
+    @Test
+    void respondToOrder_ShouldCreateContractAndChangeOrderStatus_WhenValid() {
+        // given
+        Long orderId = 10L;
+        Long walkerId = 20L;
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.OPEN);
+        order.setOwner(new User()); // владелец не важен для этого теста
+
+        User walker = new User();
+        walker.setId(walkerId);
+        walker.setRole(Role.WALKER);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(userService.findUserEntityById(walkerId)).thenReturn(walker);
+        when(contractRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        Contract savedContract = new Contract();
+        savedContract.setId(500L);
+        savedContract.setOrder(order);
+        savedContract.setWalker(walker);
+        savedContract.setPrepaid(true);
+        when(contractRepository.save(any(Contract.class))).thenReturn(savedContract);
+
+        // when
+        Contract result = orderService.respondToOrder(orderId, walkerId);
+
+        // then
+        assertThat(result.getId()).isEqualTo(500L);
+        assertThat(result.getPrepaid()).isTrue();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.IN_PROGRESS);
+        verify(orderRepository).save(order);
+        verify(contractRepository).save(any(Contract.class));
+    }
+
+    @Test
+    void respondToOrder_ShouldThrowException_WhenOrderNotOpen() {
+        // given
+        Long orderId = 10L;
+        Long walkerId = 20L;
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.IN_PROGRESS); // не OPEN
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // when/then
+        assertThatThrownBy(() -> orderService.respondToOrder(orderId, walkerId))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("закрыт для принятия");
+        verify(contractRepository, never()).save(any());
+    }
+
+    // ==================== 3. completeOrder ====================
+    @Test
+    void completeOrder_ShouldUpdateStatuses_WhenWalkerIsAssignedAndOrderInProgress() {
+        // given
+        Long orderId = 30L;
+        Long walkerId = 40L;
+
+        User walker = new User();
+        walker.setId(walkerId);
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.IN_PROGRESS);
+
+        Contract contract = new Contract();
+        contract.setWalker(walker);
+        contract.setStatus(ContractStatus.ACTIVE);
+        contract.setOrder(order);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(contractRepository.findByOrderId(orderId)).thenReturn(Optional.of(contract));
+
+        // when
+        orderService.completeOrder(orderId, walkerId);
+
+        // then
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.COMPLETED);
+        assertThat(contract.getCompletedAt()).isNotNull();
+        verify(orderRepository).save(order);
+        verify(contractRepository).save(contract);
+    }
+
+    @Test
+    void completeOrder_ShouldThrowException_WhenWalkerIdDoesNotMatch() {
+        // given
+        Long orderId = 30L;
+        Long walkerId = 40L;
+        Long anotherWalkerId = 99L;
+
+        User walker = new User();
+        walker.setId(anotherWalkerId);
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.IN_PROGRESS);
+
+        Contract contract = new Contract();
+        contract.setWalker(walker);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(contractRepository.findByOrderId(orderId)).thenReturn(Optional.of(contract));
+
+        // when/then
+        assertThatThrownBy(() -> orderService.completeOrder(orderId, walkerId))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Только закрепленный выгульщик");
+        verify(orderRepository, never()).save(any());
+    }
+
+    // ==================== 4. cancelOrderByWalker ====================
+    @Test
+    void cancelOrderByWalker_ShouldRevertStatusToOpenAndMarkPrepaidFalse_WhenValid() {
+        // given
+        Long orderId = 50L;
+        Long walkerId = 60L;
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.IN_PROGRESS);
+
+        User walker = new User();
+        walker.setId(walkerId);
+
+        Contract contract = new Contract();
+        contract.setWalker(walker);
+        contract.setPrepaid(true);
+        contract.setStatus(ContractStatus.ACTIVE);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(contractRepository.findByOrderId(orderId)).thenReturn(Optional.of(contract));
+
+        // when
+        orderService.cancelOrderByWalker(orderId, walkerId);
+
+        // then
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.OPEN);
+        assertThat(contract.getPrepaid()).isFalse();
+        assertThat(contract.getStatus()).isEqualTo(ContractStatus.CANCELLED);
+        verify(orderRepository).save(order);
+        verify(contractRepository).save(contract);
+    }
+
+    @Test
+    void cancelOrderByWalker_ShouldThrowException_WhenOrderNotInProgress() {
+        // given
+        Long orderId = 50L;
+        Long walkerId = 60L;
+        Order order = new Order();
+        order.setId(orderId);
+        order.setStatus(OrderStatus.COMPLETED); // не IN_PROGRESS
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // when/then
+        assertThatThrownBy(() -> orderService.cancelOrderByWalker(orderId, walkerId))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("Выгульщик может отменить только заказ, на который уже откликнулся");
+        verify(contractRepository, never()).findByOrderId(any());
+    }
+
+    // ==================== 5. updateOrderByOwner ====================
+    @Test
+    void updateOrderByOwner_ShouldUpdateFields_WhenOwnerMatchesAndOrderIsOpenAndNoContract() {
+        // given
+        Long orderId = 70L;
+        Long ownerId = 80L;
+
+        User owner = new User();
+        owner.setId(ownerId);
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setOwner(owner);
+        order.setStatus(OrderStatus.OPEN);
+        order.setDogBreed("Old Breed");
+        order.setPaymentAmount(BigDecimal.valueOf(100));
+
+        OrderUpdateDto updateDto = new OrderUpdateDto();
+        updateDto.setDogBreed("New Breed");
+        updateDto.setDogNeeds("Needs update");
+        updateDto.setWalkDateTime(LocalDateTime.now().plusDays(2));
+        updateDto.setDurationMinutes(45);
+        updateDto.setMeetingPoint("New meeting point");
+        updateDto.setPaymentAmount(BigDecimal.valueOf(200));
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(contractRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+
+        // when
+        OrderResponseDto result = orderService.updateOrderByOwner(orderId, ownerId, updateDto);
+
+        // then
+        assertThat(result.getDogBreed()).isEqualTo("New Breed");
+        assertThat(result.getPaymentAmount()).isEqualByComparingTo(BigDecimal.valueOf(200));
+        // verify that setters were called on order
+        assertThat(order.getDogBreed()).isEqualTo("New Breed");
+        assertThat(order.getDogNeeds()).isEqualTo("Needs update");
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void updateOrderByOwner_ShouldThrowException_WhenOrderIsAlreadyInProgress() {
+        // given
+        Long orderId = 70L;
+        Long ownerId = 80L;
+        User owner = new User();
+        owner.setId(ownerId);
+
+        Order order = new Order();
+        order.setId(orderId);
+        order.setOwner(owner);
+        order.setStatus(OrderStatus.IN_PROGRESS); // не OPEN
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // when/then
+        assertThatThrownBy(() -> orderService.updateOrderByOwner(orderId, ownerId, new OrderUpdateDto()))
+                .isInstanceOf(BusinessLogicException.class)
+                .hasMessageContaining("который уже в работе");
+        verify(orderRepository, never()).save(any());
+    }
+}
