@@ -8,7 +8,6 @@ import com.project.dogwalking.entity.enums.Role;
 import com.project.dogwalking.exception.BusinessLogicException;
 import com.project.dogwalking.exception.ResourceNotFoundException;
 import com.project.dogwalking.repository.UserRepository;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,11 +22,9 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    public void register(@Valid UserRegistrationDto dto) {
+    public UserResponseDto register(UserRegistrationDto dto) {
         // Хэшируем пароль перед сохранением
         String hashedPassword = PasswordHashUtil.hashPassword(dto.getPassword());
 
@@ -39,23 +36,20 @@ public class UserService {
         try {
             user.setRole(Role.valueOf(dto.getRole().toUpperCase()));
         } catch (IllegalArgumentException e) {
-            throw new BusinessLogicException("Несуществующая роль. Используйте OWNER или WALKER");
+            throw new BusinessLogicException("Несуществующая роль. ИСпользуйте OWNER или WALKER");
         }
 
         userRepository.save(user);
+        return null;
     }
 
     public boolean authenticate(String email, String rawPassword) {
-        // Ищем пользователя по логину
-        Optional<User> user = userRepository.findByEmail(email);
-
-        if (user.isEmpty()) {
-            return false; // Пользователь не найден
+        if (email == null || rawPassword == null) {
+            return false;
         }
-
-        User us = user.get();
-        // Сравниваем введенный пароль с хэшем из БД
-        return PasswordHashUtil.verifyPassword(rawPassword, us.getPasswordHash());
+        return userRepository.findByEmail(email)
+                .map(user -> PasswordHashUtil.verifyPassword(rawPassword, user.getPasswordHash()))
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)
